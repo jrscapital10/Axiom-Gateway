@@ -5,14 +5,16 @@ contract AxiomResolver {
     address public platformOwner;
     mapping(string => address) public registryAddresses;
 
-    constructor() {
-        platformOwner = msg.sender;
+    constructor() { 
+        platformOwner = msg.sender; 
     }
 
+    // Stores the registry address mapped to a specific extension string
     function setRegistry(string memory extension, address registry) external {
         registryAddresses[extension] = registry;
     }
 
+    // Retrieves the registry address by extension string
     function getRegistry(string memory extension) external view returns (address) {
         return registryAddresses[extension];
     }

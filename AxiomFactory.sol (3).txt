@@ -3,26 +3,46 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
-interface IAxiomResolver {
-    function setRegistry(string memory extension, address registry) external;
+interface IAxiomResolver { 
+    function setRegistry(string memory extension, address registry) external; 
 }
 
 contract AxiomFactory {
     address public immutable anchorImplementation;
     IAxiomResolver public resolver;
+    address payable public platformOwner;
+    uint256 public registrationFee = 0.01 ether;
 
     constructor(address _anchorImplementation, address _resolverAddress) {
         anchorImplementation = _anchorImplementation;
         resolver = IAxiomResolver(_resolverAddress);
+        platformOwner = payable(msg.sender);
     }
 
-    function deployRegistry(string memory extension, address owner) external returns (address) {
+    // Allows users to deploy a new registry while paying the platform fee
+    function deployRegistry(string memory extension, address registryOwner) external payable returns (address) {
+        // Enforce the registration fee
+        require(msg.value >= registrationFee, "Fee not met");
+
+        // Create the new registry clone
         address clone = Clones.clone(anchorImplementation);
-        (bool success, ) = clone.call(abi.encodeWithSignature("initialize(address)", owner));
-        require(success, "Initialization failed");
         
+        // Initialize the new registry with the owner
+        (bool success, ) = clone.call(abi.encodeWithSignature("initialize(address)", registryOwner));
+        require(success, "Init failed");
+        
+        // Register the new address in the Resolver hub
         resolver.setRegistry(extension, clone);
         
+        // Automatically transfer the fee to the platform owner
+        platformOwner.transfer(msg.value);
+        
         return clone;
+    }
+
+    // Allows the platform owner to adjust the fee as market conditions change
+    function updateFee(uint256 _newFee) external {
+        require(msg.sender == platformOwner, "Only owner");
+        registrationFee = _newFee;
     }
 }

@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/proxy/Clones.sol";
+
+// Define the interface so the Factory can talk to the Resolver
+interface IAxiomResolver {
+    function setRegistry(string memory extension, address registry) external;
+}
+
+contract AxiomFactory {
+    address public immutable anchorImplementation;
+    IAxiomResolver public resolver;
+
+    constructor(address _anchorImplementation, address _resolverAddress) {
+        anchorImplementation = _anchorImplementation;
+        resolver = IAxiomResolver(_resolverAddress);
+    }
+
+    function deployRegistry(string memory extension, address owner) external returns (address) {
+        address clone = Clones.clone(anchorImplementation);
+        (bool success, ) = clone.call(abi.encodeWithSignature("initialize(address)", owner));
+        require(success, "Initialization failed");
+        
+        // AUTOMATION: Automatically register the new clone in the Hub
+        resolver.setRegistry(extension, clone);
+        
+        return clone;
+    }
+}

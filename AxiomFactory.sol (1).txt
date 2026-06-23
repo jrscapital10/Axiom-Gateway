@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+// This contract will "clone" your existing AxiomAnchor contract
+import "@openzeppelin/contracts/proxy/Clones.sol";
+
+contract AxiomFactory {
+    address public immutable anchorImplementation;
+    event RegistryDeployed(address indexed newRegistry, string extension);
+
+    constructor(address _anchorImplementation) {
+        anchorImplementation = _anchorImplementation;
+    }
+
+        // We now ask for the 'owner' as an input
+    function deployRegistry(string memory extension, address owner) external returns (address) {
+        // 1. Create the clone
+        address clone = Clones.clone(anchorImplementation);
+        
+        // 2. IMPORTANT: Initialize the new clone with the owner
+        (bool success, ) = clone.call(abi.encodeWithSignature("initialize(address)", owner));
+        require(success, "Initialization failed");
+        
+        // 3. Emit the event
+        emit RegistryDeployed(clone, extension);
+        return clone;
+    }
